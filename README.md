@@ -1,1 +1,1 @@
-# tutorial-cloudflare-bookstore-dynamo
+# tutorial-cloudflare-bookstore (dynamo mode)
