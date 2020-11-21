@@ -1,0 +1,16 @@
+{
+  "private": true,
+  "name": "worker",
+  "version": "1.0.0",
+  "description": "A template for kick starting a Cloudflare Workers project",
+  "main": "index.js",
+  "author": "Ashley Lewis <ashleymichal@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@cfworker/uuid": "^1.5.0",
+    "@cloudflare/kv-asset-handler": "~0.0.11",
+    "base64-arraybuffer": "^0.2.0",
+    "jsc8": "^0.16.3",
+    "mmdynamo": "^0.2.0"
+  }
+}
