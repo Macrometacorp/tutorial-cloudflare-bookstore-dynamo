@@ -13,6 +13,7 @@ interface ProductRowProps {
 
 export interface Book {
   _key: string;
+  bookId: string;
   price: number;
   category: string;
   name: string;
@@ -58,7 +59,7 @@ export class ProductRow extends React.Component<
           <div className="media-left media-middle no-padding">
             <img
               className="media-object product-thumb"
-              src={`./api/getImage?bookId=${this.state.book["_key"]}`}
+              src={`./api/getImage?bookId=${this.state.book["bookId"]}`}
               alt={`${this.state.book.name} cover`}
             />
           </div>

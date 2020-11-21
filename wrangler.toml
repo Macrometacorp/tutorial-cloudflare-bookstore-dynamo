@@ -1,10 +1,10 @@
-name = "dynamo-bookstore"
+name = "bookstore-dynamo"
 type = "webpack"
 account_id = "b3dad22670b88424da9afddc967218a2"
 workers_dev = true
 route = ""
 zone_id = ""
-vars = { REGION= "ap-west", DC_LIST="vikas-ap-west", C8_URL="https://vikas.eng.macrometa.io", C8_API_KEY="dynamo-bookstore_macrometa.co.dynamo_bookstore.y7ZLXPv2bRgN98T9Q9aRiataKR9We97B74tGwG9QWr8hdFV0k9yD1COqmXAYFmqZ7ce95c" }
+vars = { REGION= "sfo2", DC_LIST="gdn1-sfo2", C8_URL="https://gdn1.macrometa.io", C8_API_KEY="xxxx" }
 kv-namespaces = [
     { binding = "BOOK_IMAGES", id = "1fcd1c0a7aae4c958bde0606dd090d95" }
 ]

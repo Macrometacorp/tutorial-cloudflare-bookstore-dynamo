@@ -62,10 +62,12 @@ export class CartProductRow extends React.Component<
   };
 
   onQuantityUpdated = async (event: any) => {
+    const price = !!this.state.book ? this.state.book.price : 0.00;
     await API.put("cart", "/cart", {
       body: {
         bookId: this.props.order.bookId,
         quantity: parseInt(event.target.value, 10),
+        price
       },
     });
   };
@@ -79,7 +81,7 @@ export class CartProductRow extends React.Component<
           <div className="media-left media-middle">
             <img
               className="media-object product-thumb"
-              src={`./api/getImage?bookId=${this.state.book["_key"]}`}
+              src={`./api/getImage?bookId=${this.state.book["bookId"]}`}
               alt={`${this.state.book.name} cover`}
             />
           </div>

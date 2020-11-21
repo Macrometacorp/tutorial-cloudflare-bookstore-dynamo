@@ -12,6 +12,7 @@ interface BestSellersState {
   // books: { bookId: any }[];
   books: {
     _key: string;
+    bookId: string;
     author: string;
     name: string;
     price: number;
@@ -71,9 +72,9 @@ export default class BestSellers extends React.Component<
                 .slice(0, 20)
                 .map((book) => (
                   <BestSellerProductRow
-                    bookId={book["_key"]}
+                    bookId={book["bookId"]}
                     book={book}
-                    key={book["_key"]}
+                    key={book["bookId"]}
                   />
                 ))
             )}

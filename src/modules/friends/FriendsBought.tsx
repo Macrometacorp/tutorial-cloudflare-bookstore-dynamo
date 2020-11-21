@@ -41,7 +41,7 @@ export class FriendsBought extends React.Component<FriendsBoughtProps, FriendsBo
           <h3>Books your friends have bought</h3>
         </div>
         {this.state.recommendations.slice(0,5).map(recommendation =>
-          <ProductRow book={recommendation} bookId={recommendation._key} key={recommendation._key} />
+          <ProductRow book={recommendation} bookId={recommendation.bookId} key={recommendation._key} />
         )}
       </div>
     );

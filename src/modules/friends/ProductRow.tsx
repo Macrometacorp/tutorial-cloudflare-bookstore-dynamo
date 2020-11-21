@@ -43,7 +43,7 @@ export class ProductRow extends React.Component<
           <div className="media-left media-middle no-padding">
             <img
               className="product-thumb border"
-              src={`./api/getImage?bookId=${this.state.book["_key"]}`}
+              src={`./api/getImage?bookId=${this.state.book["bookId"]}`}
               alt={`${this.state.book.name} cover`}
             />
           </div>
@@ -59,7 +59,7 @@ export class ProductRow extends React.Component<
             <div>
               Rating
               <AddToCart
-                bookId={this.state.book["_key"]}
+                bookId={this.state.book["bookId"]}
                 price={this.state.book.price}
               />
             </div>

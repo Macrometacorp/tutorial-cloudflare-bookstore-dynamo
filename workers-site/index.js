@@ -147,12 +147,17 @@ const getCustomerId = (request) => request.headers.get(CUSTOMER_ID_HEADER);
 
 const convertOutput = (data) => {
   let outputArray = [];
-  for(const item of data) {
+  for (const item of data) {
     let output = {};
     for (var key in item) {
       const subItem = item[key];
-      for(var type in subItem) {
-        if (type === 'S') {
+      for (var type in subItem) {
+        if (type === 'SS') {
+          output[key] = [];
+          for (let i = 0; i < subItem[type].length; i++) {
+            output[key].push(subItem[type][i]);
+          }
+        } else if (type === 'S') {
           output[key] = subItem[type];
         } else if (type === 'N') {
           output[key] = Number(subItem[type]);
@@ -185,12 +190,14 @@ async function booksHandler(request, c8qlKey) {
   let bindValue = getLastPathParam(request);
   if (c8qlKey === "ListBooks" && bindValue.includes("?category=")) {
     const queryParam = bindValue.split("?")[1].split("=");
-    bindValue = { [queryParam[0]]: decodeURI(queryParam[1]) };
+    bindValue = decodeURI(queryParam[1]);
   }
+
   const scanPayload = queries(c8qlKey, bindValue);
   let body = [];
-  await dynamoClient.scan(scanPayload, (err, data) => {
-    body = convertOutput(data.Items);
+  await dynamoClient.scan(scanPayload, (err, res) => {
+    const items = res ? res["Items"] : [];
+    body = convertOutput(items);
   });
 
   return new Response(JSON.stringify(body), optionsObj);
@@ -202,11 +209,55 @@ async function cartHandler(request, c8qlKey) {
   if (customerId) {
     let bindValue = { customerId };
     let requestBody;
+    let result = [];
+
     if (request.method !== "GET") {
       requestBody = await request.json();
       bindValue = { ...bindValue, ...requestBody };
+      bindValue["_key"] = `${bindValue.customerId}:${bindValue.bookId}`;
+      bindValue["cartId"] = `${bindValue.customerId}:${bindValue.bookId}`;
+
+      if (c8qlKey === "AddToCart" || c8qlKey === "UpdateCart") {
+        if (c8qlKey === "AddToCart") {
+          const checkCartPayload = queries("FindCartItem", bindValue);
+          await dynamoClient.scan(checkCartPayload, (err, res) => {
+            const items = res ? res["Items"] : [];
+            result = convertOutput(items);
+          });
+          if (result.length) {
+            bindValue["quantity"] = result[0].quantity + 1;
+          }
+        }
+        const addToCartPayload = queries(c8qlKey, bindValue);
+        await dynamoClient.putItem(addToCartPayload, (err, data) => {
+          result = !data.message ? [] : data;
+        });
+      }
+      if (c8qlKey === "RemoveFromCart") {
+        const removeFromCartPayload = queries(c8qlKey, bindValue);
+        await dynamoClient.deleteItem(removeFromCartPayload, (err, data) => {
+          result = !data.message ? [] : data;
+        });
+      }
+      return new Response(JSON.stringify(result), optionsObj);
     } else if (c8qlKey === "GetCartItem") {
       bindValue = { ...bindValue, bookId: getLastPathParam(request) };
+    } else if (c8qlKey === "ListItemsInCart") {
+      const custCartItemsPayload = queries("GetCustomerCartItems", bindValue.customerId);
+      let custCartItems = [];
+      await dynamoClient.scan(custCartItemsPayload, (err, res) => {
+        const items = res ? res["Items"] : [];
+        custCartItems = convertOutput(items);
+      });
+      for (const item of custCartItems) {
+        const bookItemPayload = queries("GetBookItems", item.bookId);
+        await dynamoClient.scan(bookItemPayload, (err, res) => {
+          const items = res ? res["Items"] : [];
+          const bookItems = convertOutput(items)
+          result.push({ order: item, book: bookItems[0] });
+        });
+      }
+      return new Response(JSON.stringify(result), optionsObj);
     }
     body = await executeQuery(c8qlKey, bindValue);
   }
@@ -220,18 +271,22 @@ async function ordersHandler(request, c8qlKey) {
     let bindValue = { customerId };
     let orderDate = Date.now();
     const orderId = `${orderDate.toString()}:${customerId}`;
-    let shouldUpdatePurchased = false;
     if (c8qlKey === "Checkout") {
       bindValue = {
         ...bindValue,
         orderId,
         orderDate,
       };
-      shouldUpdatePurchased = true;
-    }
-    body = await executeQuery(c8qlKey, bindValue);
-    if (shouldUpdatePurchased && !body.error) {
-      await executeQuery("AddPurchased", { orderId });
+      body = await executeQuery(c8qlKey, bindValue);
+      if (!body.error) {
+        await executeQuery("AddPurchased", { orderId });
+      }
+    } else {
+      const lsitOrderPayload = queries(c8qlKey, customerId);
+      await dynamoClient.scan(lsitOrderPayload, (err, res) => {
+        const items = res ? res["Items"] : [];
+        body = convertOutput(items);
+      });
     }
   }
   return new Response(JSON.stringify(body), optionsObj);
@@ -276,10 +331,16 @@ async function signupHandler(request) {
   );
   const passwordHash = new TextDecoder("utf-8").decode(digestedPassword);
   const customerId = uuid();
-  const result = await executeQuery("signup", {
-    username,
-    passwordHash,
+  const payload = queries("signup", {
+    customer: username,
+    _key: username,
+    password: passwordHash,
     customerId,
+  });
+  let result;
+
+  await dynamoClient.putItem(payload, (err, data) => {
+    result = { error: !!data.message };
   });
   if (!result.error) {
     const res = await executeQuery("AddFriends", { username });
@@ -299,14 +360,20 @@ async function signinHandler(request) {
     encodedPassword // The data you want to hash as an ArrayBuffer
   );
   const passwordHash = new TextDecoder("utf-8").decode(digestedPassword);
-  const result = await executeQuery("signin", {
-    username,
-    passwordHash,
+  const payload = queries("signin", {
+    customer: username,
+    password: passwordHash
   });
+
+  let result;
+  await dynamoClient.scan(payload, (err, res) => {
+    const items = res ? res["Items"] : [];
+    result = convertOutput(items);
+  })
   let message = "User not found";
   let status = 404;
   if (result.length) {
-    message = result;
+    message = [result[0].customerId];
     status = 200;
   }
   const body = JSON.stringify({ message });

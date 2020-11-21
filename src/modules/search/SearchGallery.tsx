@@ -64,7 +64,7 @@ export class SearchGallery extends React.Component<SearchGalleryProps, SearchGal
           <div className="container-category">
             <h3>Search results</h3>
             <div className="row">
-              {this.state.books.map(book => <CategoryGalleryBook book={book} key={book["_key"]} />)}
+              {this.state.books.map(book => <CategoryGalleryBook book={book} key={book["bookId"]} />)}
             </div>
           </div>
         </div>

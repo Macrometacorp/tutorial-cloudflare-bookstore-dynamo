@@ -1,11 +1,44 @@
+const formatItem = (name, item) => {
+  const formatItemData = (item) => {
+    let itemObject = {};
+    for (const key in item) {
+      const valueType = typeof item[key];
+      let type = "S";
+      if (valueType === "boolean") {
+        type = "BOOL";
+      } else if (valueType === "number") {
+        type = "N";
+      } else if (valueType === "object") {
+        if (Array.isArray(item[key])) {
+          itemObject[key] = { "L": [] };
+          for (const subItem of item[key]) {
+            itemObject[key]["L"].push({ "M": { ...formatItemData(subItem) } });
+          }
+        } else {
+          itemObject[key] = { "M": {} };
+          itemObject[key]["M"] = { ...formatItemData(item[key]) };
+        }
+      }
+      if (valueType !== "object") {
+        itemObject[key] = { [type]: item[key] };
+      }
+    }
+    return itemObject
+  }
+
+  const formattedItemObject = formatItemData(item);
+
+  return {
+    TableName: name,
+    Item: formattedItemObject
+  }
+}
+
 const queries = (queryName, bindValue) => {
   let queryObj;
   switch (queryName) {
     case "signup":
-      queryObj = {
-        query: `INSERT {_key: @username, password: @passwordHash, customerId: @customerId} INTO UsersTable`,
-        bindVars: bindValue,
-      };
+      queryObj = formatItem("UsersTable", bindValue);
       break;
     case "AddFriends":
       queryObj = {
@@ -17,9 +50,11 @@ const queries = (queryName, bindValue) => {
       break;
     case "signin":
       queryObj = {
-        query: `FOR user in UsersTable FILTER user._key == @username AND user.password == @passwordHash RETURN user.customerId`,
-        bindVars: bindValue,
-      };
+        TableName: "UsersTable",
+        FilterExpression: "#customer = :customer AND #password = :password",
+        ExpressionAttributeNames: { "#customer": "customer", "#password": "password" },
+        ExpressionAttributeValues: { ":customer": { "S": bindValue.customer }, ":password": { "S": bindValue.password } }
+      }
       break;
 
     case "ListBooks":
@@ -27,7 +62,7 @@ const queries = (queryName, bindValue) => {
         TableName: "BooksTable",
         FilterExpression: "#category = :category",
         ExpressionAttributeNames: { "#category": "category" },
-        ExpressionAttributeValues: { ":category": { "S": "Database" } }
+        ExpressionAttributeValues: { ":category": { "S": bindValue } }
       }
 
       break;
@@ -38,37 +73,43 @@ const queries = (queryName, bindValue) => {
       };
       break;
 
-    case "ListItemsInCart":
+    case "GetCustomerCartItems":
       queryObj = {
-        // query:
-        //   "FOR item IN CartTable FILTER item.customerId == @customerId RETURN item",
-        query: `FOR item IN CartTable FILTER item.customerId == @customerId
-        FOR book in BooksTable FILTER book._key == item.bookId
-            RETURN {order: item, book: book}`,
-        bindVars: bindValue,
-      };
+        TableName: "CartTable",
+        FilterExpression: "#customerId = :customerId",
+        ExpressionAttributeNames: { "#customerId": "customerId" },
+        ExpressionAttributeValues: { ":customerId": { "S": bindValue } }
+      }
+      break;
+
+    case "GetBookItems":
+      queryObj = {
+        TableName: "BooksTable",
+        FilterExpression: "#bookId = :bookId",
+        ExpressionAttributeNames: { "#bookId": "bookId" },
+        ExpressionAttributeValues: { ":bookId": { "S": bindValue } }
+      }
+      break;
+
+    case "FindCartItem":
+      queryObj = {
+        TableName: "CartTable",
+        FilterExpression: "#cartId = :cartId",
+        ExpressionAttributeNames: { "#cartId": "cartId" },
+        ExpressionAttributeValues: { ":cartId": { "S": bindValue.cartId } }
+      }
       break;
     case "AddToCart":
-      queryObj = {
-        query: `UPSERT { _key: CONCAT_SEPARATOR(":", @customerId, @bookId) } 
-          INSERT { _key: CONCAT_SEPARATOR(":", @customerId, @bookId),customerId: @customerId, bookId: @bookId, quantity: @quantity, price: @price } 
-          UPDATE { quantity: OLD.quantity + @quantity } IN CartTable`,
-        bindVars: bindValue,
-      };
+      queryObj = formatItem("CartTable", bindValue);
       break;
     case "UpdateCart":
-      queryObj = {
-        query:
-          'FOR item IN CartTable UPDATE {_key: CONCAT_SEPARATOR(":", @customerId, @bookId),quantity: @quantity} IN CartTable',
-        bindVars: bindValue,
-      };
+      queryObj = formatItem("CartTable", bindValue);
       break;
     case "RemoveFromCart":
       queryObj = {
-        query:
-          'REMOVE {_key: CONCAT_SEPARATOR(":", @customerId, @bookId)} IN CartTable',
-        bindVars: bindValue,
-      };
+        TableName: "CartTable",
+        Key: { "cartId": { "S": bindValue.cartId } }
+      }
       break;
     case "GetCartItem":
       queryObj = {
@@ -80,17 +121,18 @@ const queries = (queryName, bindValue) => {
 
     case "ListOrders":
       queryObj = {
-        query:
-          "FOR item IN OrdersTable FILTER item.customerId == @customerId RETURN item",
-        bindVars: bindValue,
-      };
+        TableName: "OrdersTable",
+        FilterExpression: "#customerId = :customerId",
+        ExpressionAttributeNames: { "#customerId": "customerId" },
+        ExpressionAttributeValues: { ":customerId": { "S": bindValue } }
+      }
       break;
     case "Checkout":
       queryObj = {
         query: `LET items = (FOR item IN CartTable FILTER item.customerId == @customerId RETURN item)
         LET books = (FOR item in items
             FOR book in BooksTable FILTER book._key == item.bookId return {bookId:book._key ,author: book.author,category:book.category,name:book.name,price:book.price,rating:book.rating,quantity:item.quantity})
-        INSERT {_key: @orderId, customerId: @customerId, books: books, orderDate: @orderDate} INTO OrdersTable
+        INSERT {_key: @orderId, orderId: @orderId, customerId: @customerId, books: books, orderDate: @orderDate} INTO OrdersTable
         FOR item IN items REMOVE item IN CartTable`,
         bindVars: bindValue,
       };
