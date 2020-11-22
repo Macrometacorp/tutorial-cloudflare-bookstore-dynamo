@@ -230,13 +230,13 @@ async function cartHandler(request, c8qlKey) {
         }
         const addToCartPayload = queries(c8qlKey, bindValue);
         await dynamoClient.putItem(addToCartPayload, (err, data) => {
-          result = !data.message ? [] : data;
+          result = (!data || !data.message) ? [] : data;
         });
       }
       if (c8qlKey === "RemoveFromCart") {
         const removeFromCartPayload = queries(c8qlKey, bindValue);
         await dynamoClient.deleteItem(removeFromCartPayload, (err, data) => {
-          result = !data.message ? [] : data;
+          result = (!data || !data.message) ? [] : data;
         });
       }
       return new Response(JSON.stringify(result), optionsObj);
@@ -340,7 +340,7 @@ async function signupHandler(request) {
   let result;
 
   await dynamoClient.putItem(payload, (err, data) => {
-    result = { error: !!data.message };
+    result = { error: !!data && !!data.message };
   });
   if (!result.error) {
     const res = await executeQuery("AddFriends", { username });
@@ -365,7 +365,7 @@ async function signinHandler(request) {
     password: passwordHash
   });
 
-  let result;
+  let result = [];
   await dynamoClient.scan(payload, (err, res) => {
     const items = res ? res["Items"] : [];
     result = convertOutput(items);
