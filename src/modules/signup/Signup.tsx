@@ -207,7 +207,7 @@ export default class Signup extends React.Component<SignupProps, SignupState> {
           {this.state.loading && (
             <Glyphicon glyph="refresh" className="spinning" />
           )}
-          Log in
+          Sign Up
         </Button>
       </form>
     );

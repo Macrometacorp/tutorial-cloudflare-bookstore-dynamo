@@ -53,7 +53,8 @@ const queries = (queryName, bindValue) => {
         TableName: "UsersTable",
         FilterExpression: "#customer = :customer AND #password = :password",
         ExpressionAttributeNames: { "#customer": "customer", "#password": "password" },
-        ExpressionAttributeValues: { ":customer": { "S": bindValue.customer }, ":password": { "S": bindValue.password } }
+        ExpressionAttributeValues: { ":customer": { "S": bindValue.customer }, ":password": { "S": bindValue.password } },
+        ConsistentRead: true
       }
       break;
 
@@ -62,7 +63,8 @@ const queries = (queryName, bindValue) => {
         TableName: "BooksTable",
         FilterExpression: "#category = :category",
         ExpressionAttributeNames: { "#category": "category" },
-        ExpressionAttributeValues: { ":category": { "S": bindValue } }
+        ExpressionAttributeValues: { ":category": { "S": bindValue } },
+        ConsistentRead: true
       }
 
       break;
@@ -78,7 +80,8 @@ const queries = (queryName, bindValue) => {
         TableName: "CartTable",
         FilterExpression: "#customerId = :customerId",
         ExpressionAttributeNames: { "#customerId": "customerId" },
-        ExpressionAttributeValues: { ":customerId": { "S": bindValue } }
+        ExpressionAttributeValues: { ":customerId": { "S": bindValue } },
+        ConsistentRead: true
       }
       break;
 
@@ -87,7 +90,8 @@ const queries = (queryName, bindValue) => {
         TableName: "BooksTable",
         FilterExpression: "#bookId = :bookId",
         ExpressionAttributeNames: { "#bookId": "bookId" },
-        ExpressionAttributeValues: { ":bookId": { "S": bindValue } }
+        ExpressionAttributeValues: { ":bookId": { "S": bindValue } },
+        ConsistentRead: true
       }
       break;
 
@@ -96,7 +100,8 @@ const queries = (queryName, bindValue) => {
         TableName: "CartTable",
         FilterExpression: "#cartId = :cartId",
         ExpressionAttributeNames: { "#cartId": "cartId" },
-        ExpressionAttributeValues: { ":cartId": { "S": bindValue.cartId } }
+        ExpressionAttributeValues: { ":cartId": { "S": bindValue.cartId } },
+        ConsistentRead: true
       }
       break;
     case "AddToCart":
@@ -124,7 +129,8 @@ const queries = (queryName, bindValue) => {
         TableName: "OrdersTable",
         FilterExpression: "#customerId = :customerId",
         ExpressionAttributeNames: { "#customerId": "customerId" },
-        ExpressionAttributeValues: { ":customerId": { "S": bindValue } }
+        ExpressionAttributeValues: { ":customerId": { "S": bindValue } },
+        ConsistentRead: true
       }
       break;
     case "Checkout":
