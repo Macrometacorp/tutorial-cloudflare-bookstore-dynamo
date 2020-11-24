@@ -858,7 +858,7 @@ const Tables = [
   },
   {
     name: "UsersTable",
-    partitionKey: "customerId",
+    partitionKey: "customer",
     partitionKeyType: "S",
     data: [
       {
