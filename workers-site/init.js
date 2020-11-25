@@ -1,7 +1,7 @@
 const Tables = [
   {
     name: "BooksTable",
-    partitionKey: "name",
+    partitionKey: "bookId",
     partitionKeyType: "S",
     sortKey: "author",
     sortKeyType: "S",

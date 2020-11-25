@@ -51,10 +51,7 @@ const queries = (queryName, bindValue) => {
     case "signin":
       queryObj = {
         TableName: "UsersTable",
-        FilterExpression: "#customer = :customer AND #password = :password",
-        ExpressionAttributeNames: { "#customer": "customer", "#password": "password" },
-        ExpressionAttributeValues: { ":customer": { "S": bindValue.customer }, ":password": { "S": bindValue.password } },
-        ConsistentRead: true
+        Key: { "customer": { "S": bindValue.customer } },
       }
       break;
 
@@ -64,7 +61,6 @@ const queries = (queryName, bindValue) => {
         FilterExpression: "#category = :category",
         ExpressionAttributeNames: { "#category": "category" },
         ExpressionAttributeValues: { ":category": { "S": bindValue } },
-        ConsistentRead: true
       }
 
       break;
@@ -81,27 +77,20 @@ const queries = (queryName, bindValue) => {
         FilterExpression: "#customerId = :customerId",
         ExpressionAttributeNames: { "#customerId": "customerId" },
         ExpressionAttributeValues: { ":customerId": { "S": bindValue } },
-        ConsistentRead: true
       }
       break;
 
     case "GetBookItems":
       queryObj = {
         TableName: "BooksTable",
-        FilterExpression: "#bookId = :bookId",
-        ExpressionAttributeNames: { "#bookId": "bookId" },
-        ExpressionAttributeValues: { ":bookId": { "S": bindValue } },
-        ConsistentRead: true
+        Key: { "bookId": { "S": bindValue } },
       }
       break;
 
     case "FindCartItem":
       queryObj = {
         TableName: "CartTable",
-        FilterExpression: "#cartId = :cartId",
-        ExpressionAttributeNames: { "#cartId": "cartId" },
-        ExpressionAttributeValues: { ":cartId": { "S": bindValue.cartId } },
-        ConsistentRead: true
+        Key: { "cartId": { "S": bindValue.cartId } },
       }
       break;
     case "AddToCart":
@@ -130,7 +119,6 @@ const queries = (queryName, bindValue) => {
         FilterExpression: "#customerId = :customerId",
         ExpressionAttributeNames: { "#customerId": "customerId" },
         ExpressionAttributeValues: { ":customerId": { "S": bindValue } },
-        ConsistentRead: true
       }
       break;
     case "Checkout":

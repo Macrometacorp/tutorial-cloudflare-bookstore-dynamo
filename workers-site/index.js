@@ -146,8 +146,7 @@ const executeQuery = async (c8qlKey, bindValue) => {
 const getCustomerId = (request) => request.headers.get(CUSTOMER_ID_HEADER);
 
 const convertOutput = (data) => {
-  let outputArray = [];
-  for (const item of data) {
+  const createObj = (item) => {
     let output = {};
     for (var key in item) {
       const subItem = item[key];
@@ -168,9 +167,19 @@ const convertOutput = (data) => {
         }
       }
     }
-    outputArray.push(output);
+    return output;
   }
-  return outputArray;
+  if (Array.isArray(data)) {
+    let outputArray = [];
+    for (const item of data) {
+      const output = createObj(item)
+      outputArray.push(output);
+    }
+    return outputArray;
+  } else {
+    const output = createObj(data);
+    return output;
+  }
 }
 
 async function initHandler(request) {
@@ -220,12 +229,16 @@ async function cartHandler(request, c8qlKey) {
       if (c8qlKey === "AddToCart" || c8qlKey === "UpdateCart") {
         if (c8qlKey === "AddToCart") {
           const checkCartPayload = queries("FindCartItem", bindValue);
-          await dynamoClient.scan(checkCartPayload, (err, res) => {
-            const items = res ? res["Items"] : [];
-            result = convertOutput(items);
+          await dynamoClient.getItem(checkCartPayload, (err, res) => {
+            if (err) {
+              result = err.errorMessage
+            } else {
+              const item = res ? res["Item"] : [];
+              result = convertOutput(item);
+            }
           });
-          if (result.length) {
-            bindValue["quantity"] = result[0].quantity + 1;
+          if (result) {
+            bindValue["quantity"] = result.quantity + 1;
           }
         }
         const addToCartPayload = queries(c8qlKey, bindValue);
@@ -251,10 +264,14 @@ async function cartHandler(request, c8qlKey) {
       });
       for (const item of custCartItems) {
         const bookItemPayload = queries("GetBookItems", item.bookId);
-        await dynamoClient.scan(bookItemPayload, (err, res) => {
-          const items = res ? res["Items"] : [];
-          const bookItems = convertOutput(items)
-          result.push({ order: item, book: bookItems[0] });
+        await dynamoClient.getItem(bookItemPayload, (err, res) => {
+          if (err) {
+            result = err.errorMessage
+          } else {
+            const items = res ? res["Item"] : [];
+            const bookItems = convertOutput(items);
+            result.push({ order: item, book: bookItems });
+          }
         });
       }
       return new Response(JSON.stringify(result), optionsObj);
@@ -361,21 +378,25 @@ async function signinHandler(request) {
   );
   const passwordHash = new TextDecoder("utf-8").decode(digestedPassword);
   const payload = queries("signin", {
-    customer: username,
-    password: passwordHash
+    customer: username
   });
 
   let result = [];
-  await dynamoClient.scan(payload, (err, res) => {
-    const items = res ? res["Items"] : [];
-    result = convertOutput(items);
-  })
   let message = "User not found";
   let status = 404;
-  if (result.length) {
-    message = [result[0].customerId];
-    status = 200;
-  }
+  await dynamoClient.getItem(payload, (err, res) => {
+    if (err) {
+      message = err.errorMessage
+    } else {
+      const item = res ? res["Item"] : [];
+      result = convertOutput(item);
+      if (result.password && result.password === passwordHash) {
+        message = [result.customerId];
+        status = 200;
+      }
+    }
+  });
+
   const body = JSON.stringify({ message });
   return new Response(body, { status, ...optionsObj });
 }
