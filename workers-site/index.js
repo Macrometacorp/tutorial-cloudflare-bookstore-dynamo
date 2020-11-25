@@ -237,7 +237,7 @@ async function cartHandler(request, c8qlKey) {
               result = convertOutput(item);
             }
           });
-          if (result) {
+          if (result.quantity) {
             bindValue["quantity"] = result.quantity + 1;
           }
         }
