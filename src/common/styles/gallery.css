@@ -59,6 +59,10 @@
 	margin: 0px;
 }
 
+.container-category .tile {
+	height: 500px;
+}
+
 .friend-thumb { 
 	border-radius: 50%;
 }

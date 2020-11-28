@@ -14,7 +14,7 @@ export class CategoryGalleryBook extends React.Component<
   render() {
     if (!this.props.book) return;
     return (
-      <div className="col-sm-3 col-md-3">
+      <div className="col-sm-3 col-md-3 tile">
         <div className="thumbnail no-border">
           <p className="rating-container">
             <StarRating stars={this.props.book.rating} />

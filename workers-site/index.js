@@ -114,14 +114,12 @@ const client = new jsc8({
 
 const dcName = C8_URL.split("https://")[1];
 const host = "https://api-" + dcName;
-const region = REGION;
 const endpoint = host + "/_api/dynamo";
 // secretAccessKey is a required parameter for aws-sdk we recommend you to pass "c8"
 const secretAccessKey = "c8";
 const accessKeyId = "apikey " + C8_API_KEY;
 
 const dynamoClient = new DynamoDB({
-  region,
   endpoint,
   accessKeyId,
   secretAccessKey,
@@ -150,22 +148,34 @@ const convertOutput = (data) => {
     let output = {};
     for (var key in item) {
       const subItem = item[key];
-      for (var type in subItem) {
-        if (type === 'SS') {
-          output[key] = [];
-          for (let i = 0; i < subItem[type].length; i++) {
-            output[key].push(subItem[type][i]);
+      const createSubObj = (key, subItem) => {
+        let obj = {};
+        for (var type in subItem) {
+          if (type === 'SS') {
+            obj[key] = [];
+            for (let i = 0; i < subItem[type].length; i++) {
+              obj[key].push(subItem[type][i]);
+            }
+          } else if (type === 'M') {
+              obj = createObj(subItem[type]);
+          } else if (type === 'L') {
+            obj[key] = [];
+            for (var i = 0; i < subItem[type].length; i++) {
+              obj[key].push(createSubObj(key, subItem[type][i]));
+            }
+          } else if (type === 'S') {
+            obj[key] = subItem[type];
+          } else if (type === 'N') {
+            obj[key] = Number(subItem[type]);
+          } else if (type === 'BOOL') {
+            obj[key] = (subItem[type] === 'true' || subItem[type] === 'TRUE' || subItem[type] === true);
+          } else if (type === 'NULL') {
+            obj[key] = null
           }
-        } else if (type === 'S') {
-          output[key] = subItem[type];
-        } else if (type === 'N') {
-          output[key] = Number(subItem[type]);
-        } else if (type === 'BOOL') {
-          output[key] = (subItem[type] === 'true' || subItem[type] === 'TRUE' || subItem[type] === true);
-        } else if (type === 'NULL') {
-          output[key] = null
         }
+        return obj;
       }
+      output = {...output, ...createSubObj(key, subItem)};
     }
     return output;
   }
@@ -180,7 +190,7 @@ const convertOutput = (data) => {
     const output = createObj(data);
     return output;
   }
-}
+};
 
 async function initHandler(request) {
   let res;
@@ -299,8 +309,8 @@ async function ordersHandler(request, c8qlKey) {
         await executeQuery("AddPurchased", { orderId });
       }
     } else {
-      const lsitOrderPayload = queries(c8qlKey, customerId);
-      await dynamoClient.scan(lsitOrderPayload, (err, res) => {
+      const listOrderPayload = queries(c8qlKey, customerId);
+      await dynamoClient.scan(listOrderPayload, (err, res) => {
         const items = res ? res["Items"] : [];
         body = convertOutput(items);
       });
