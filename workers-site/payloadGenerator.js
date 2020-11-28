@@ -34,117 +34,117 @@ const formatItem = (name, item) => {
   }
 }
 
-const queries = (queryName, bindValue) => {
-  let queryObj;
-  switch (queryName) {
+const getPayload = (actionName, inputValues) => {
+  let payload;
+  switch (actionName) {
     case "signup":
-      queryObj = formatItem("UsersTable", bindValue);
+      payload = formatItem("UsersTable", inputValues);
       break;
     case "AddFriends":
-      queryObj = {
+      payload = {
         query: `LET otherUsers = (FOR users in UsersTable FILTER users._key != @username RETURN users)
         FOR user in otherUsers
             INSERT { _from: CONCAT("UsersTable/",@username), _to: CONCAT("UsersTable/",user._key)  } INTO friend`,
-        bindVars: bindValue,
+        bindVars: inputValues,
       };
       break;
     case "signin":
-      queryObj = {
+      payload = {
         TableName: "UsersTable",
-        Key: { "customer": { "S": bindValue.customer } },
+        Key: { "customer": { "S": inputValues.customer } },
       }
       break;
 
     case "ListBooks":
-      queryObj = {
+      payload = {
         TableName: "BooksTable",
         FilterExpression: "#category = :category",
         ExpressionAttributeNames: { "#category": "category" },
-        ExpressionAttributeValues: { ":category": { "S": bindValue } },
+        ExpressionAttributeValues: { ":category": { "S": inputValues } },
       }
 
       break;
     case "GetBook":
-      queryObj = {
+      payload = {
         query: "FOR book in BooksTable FILTER book._key == @bookId RETURN book",
-        bindVars: { bookId: bindValue },
+        bindVars: { bookId: inputValues },
       };
       break;
 
     case "GetCustomerCartItems":
-      queryObj = {
+      payload = {
         TableName: "CartTable",
         FilterExpression: "#customerId = :customerId",
         ExpressionAttributeNames: { "#customerId": "customerId" },
-        ExpressionAttributeValues: { ":customerId": { "S": bindValue } },
+        ExpressionAttributeValues: { ":customerId": { "S": inputValues } },
       }
       break;
 
     case "GetBookItems":
-      queryObj = {
+      payload = {
         TableName: "BooksTable",
-        Key: { "bookId": { "S": bindValue } },
+        Key: { "bookId": { "S": inputValues } },
       }
       break;
 
     case "FindCartItem":
-      queryObj = {
+      payload = {
         TableName: "CartTable",
-        Key: { "cartId": { "S": bindValue.cartId } },
+        Key: { "cartId": { "S": inputValues.cartId } },
       }
       break;
     case "AddToCart":
-      queryObj = formatItem("CartTable", bindValue);
+      payload = formatItem("CartTable", inputValues);
       break;
     case "UpdateCart":
-      queryObj = formatItem("CartTable", bindValue);
+      payload = formatItem("CartTable", inputValues);
       break;
     case "RemoveFromCart":
-      queryObj = {
+      payload = {
         TableName: "CartTable",
-        Key: { "cartId": { "S": bindValue.cartId } }
+        Key: { "cartId": { "S": inputValues.cartId } }
       }
       break;
     case "GetCartItem":
-      queryObj = {
+      payload = {
         query:
           "FOR item IN CartTable FILTER item.customerId == @customerId AND item.bookId == @bookId RETURN item",
-        bindVars: bindValue,
+        bindVars: inputValues,
       };
       break;
 
     case "ListOrders":
-      queryObj = {
+      payload = {
         TableName: "OrdersTable",
         FilterExpression: "#customerId = :customerId",
         ExpressionAttributeNames: { "#customerId": "customerId" },
-        ExpressionAttributeValues: { ":customerId": { "S": bindValue } },
+        ExpressionAttributeValues: { ":customerId": { "S": inputValues } },
       }
       break;
     case "Checkout":
-      queryObj = {
+      payload = {
         query: `LET items = (FOR item IN CartTable FILTER item.customerId == @customerId RETURN item)
         LET books = (FOR item in items
             FOR book in BooksTable FILTER book._key == item.bookId return {bookId:book._key ,author: book.author,category:book.category,name:book.name,price:book.price,rating:book.rating,quantity:item.quantity})
         INSERT {_key: @orderId, orderId: @orderId, customerId: @customerId, books: books, orderDate: @orderDate} INTO OrdersTable
         FOR item IN items REMOVE item IN CartTable`,
-        bindVars: bindValue,
+        bindVars: inputValues,
       };
       break;
     case "AddPurchased":
-      queryObj = {
+      payload = {
         query: `LET order = first(FOR order in OrdersTable FILTER order._key == @orderId RETURN {customerId: order.customerId, books: order.books})
         LET customerId = order.customerId
         LET userId = first(FOR user IN UsersTable FILTER user.customerId == customerId RETURN user._id)
         LET books = order.books
         FOR book IN books
             INSERT {_from: userId, _to: CONCAT("BooksTable/",book.bookId)} INTO purchased`,
-        bindVars: bindValue,
+        bindVars: inputValues,
       };
       break;
 
     case "GetBestSellers":
-      queryObj = {
+      payload = {
         // query:
         //   "FOR book in BestsellersTable SORT book.quantity DESC LIMIT 20 return book._key",
         query: `FOR bestseller in BestsellersTable
@@ -155,37 +155,37 @@ const queries = (queryName, bindValue) => {
       break;
 
     case "GetRecommendations":
-      queryObj = {
+      payload = {
         query: `LET userId = first(FOR user in UsersTable FILTER user.customerId == @customerId return user._id)
         FOR user IN ANY userId friend
             FOR books IN OUTBOUND user purchased
             RETURN books`,
-        bindVars: bindValue,
+        bindVars: inputValues,
       };
       break;
     case "GetRecommendationsByBook":
-      queryObj = {
+      payload = {
         query: `LET userId = first(FOR user in UsersTable FILTER user.customerId == @customerId return user._id)
       LET bookId = CONCAT("BooksTable/",@bookId)
       FOR friendsPurchased IN INBOUND bookId purchased
           FOR user IN ANY userId friend
               FILTER user._key == friendsPurchased._key
                   RETURN user`,
-        bindVars: bindValue,
+        bindVars: inputValues,
       };
       break;
 
     case "Search":
-      queryObj = {
+      payload = {
         query: `FOR doc IN findBooks
       SEARCH PHRASE(doc.name, @search, "text_en") OR PHRASE(doc.author, @search, "text_en") OR PHRASE(doc.category, @search, "text_en")
       SORT BM25(doc) desc
       RETURN doc`,
-        bindVars: bindValue,
+        bindVars: inputValues,
       };
       break;
   }
-  return queryObj;
+  return payload;
 };
 
-module.exports = { queries };
+module.exports = { getPayload };

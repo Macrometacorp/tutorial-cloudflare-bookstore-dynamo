@@ -6,7 +6,7 @@ const Router = require("./router");
 const init = require("./init");
 const jsc8 = require("jsc8");
 const { DynamoDB } = require("mmdynamo");
-const { queries } = require("./c8qls");
+const { getPayload } = require("./payloadGenerator");
 const { uuid } = require("@cfworker/uuid");
 const { decode } = require("base64-arraybuffer");
 /**
@@ -131,7 +131,7 @@ const getLastPathParam = (request) => {
 };
 
 const executeQuery = async (c8qlKey, bindValue) => {
-  const { query, bindVars } = queries(c8qlKey, bindValue);
+  const { query, bindVars } = getPayload(c8qlKey, bindValue);
   let result;
   try {
     result = await client.executeQuery(query, bindVars);
@@ -212,7 +212,7 @@ async function booksHandler(request, c8qlKey) {
     bindValue = decodeURI(queryParam[1]);
   }
 
-  const scanPayload = queries(c8qlKey, bindValue);
+  const scanPayload = getPayload(c8qlKey, bindValue);
   let body = [];
   await dynamoClient.scan(scanPayload, (err, res) => {
     const items = res ? res["Items"] : [];
@@ -238,7 +238,7 @@ async function cartHandler(request, c8qlKey) {
 
       if (c8qlKey === "AddToCart" || c8qlKey === "UpdateCart") {
         if (c8qlKey === "AddToCart") {
-          const checkCartPayload = queries("FindCartItem", bindValue);
+          const checkCartPayload = getPayload("FindCartItem", bindValue);
           await dynamoClient.getItem(checkCartPayload, (err, res) => {
             if (err) {
               result = err.errorMessage
@@ -251,13 +251,13 @@ async function cartHandler(request, c8qlKey) {
             bindValue["quantity"] = result.quantity + 1;
           }
         }
-        const addToCartPayload = queries(c8qlKey, bindValue);
+        const addToCartPayload = getPayload(c8qlKey, bindValue);
         await dynamoClient.putItem(addToCartPayload, (err, data) => {
           result = (!data || !data.message) ? [] : data;
         });
       }
       if (c8qlKey === "RemoveFromCart") {
-        const removeFromCartPayload = queries(c8qlKey, bindValue);
+        const removeFromCartPayload = getPayload(c8qlKey, bindValue);
         await dynamoClient.deleteItem(removeFromCartPayload, (err, data) => {
           result = (!data || !data.message) ? [] : data;
         });
@@ -266,14 +266,14 @@ async function cartHandler(request, c8qlKey) {
     } else if (c8qlKey === "GetCartItem") {
       bindValue = { ...bindValue, bookId: getLastPathParam(request) };
     } else if (c8qlKey === "ListItemsInCart") {
-      const custCartItemsPayload = queries("GetCustomerCartItems", bindValue.customerId);
+      const custCartItemsPayload = getPayload("GetCustomerCartItems", bindValue.customerId);
       let custCartItems = [];
       await dynamoClient.scan(custCartItemsPayload, (err, res) => {
         const items = res ? res["Items"] : [];
         custCartItems = convertOutput(items);
       });
       for (const item of custCartItems) {
-        const bookItemPayload = queries("GetBookItems", item.bookId);
+        const bookItemPayload = getPayload("GetBookItems", item.bookId);
         await dynamoClient.getItem(bookItemPayload, (err, res) => {
           if (err) {
             result = err.errorMessage
@@ -309,7 +309,7 @@ async function ordersHandler(request, c8qlKey) {
         await executeQuery("AddPurchased", { orderId });
       }
     } else {
-      const listOrderPayload = queries(c8qlKey, customerId);
+      const listOrderPayload = getPayload(c8qlKey, customerId);
       await dynamoClient.scan(listOrderPayload, (err, res) => {
         const items = res ? res["Items"] : [];
         body = convertOutput(items);
@@ -358,7 +358,7 @@ async function signupHandler(request) {
   );
   const passwordHash = new TextDecoder("utf-8").decode(digestedPassword);
   const customerId = uuid();
-  const payload = queries("signup", {
+  const payload = getPayload("signup", {
     customer: username,
     _key: username,
     password: passwordHash,
@@ -387,7 +387,7 @@ async function signinHandler(request) {
     encodedPassword // The data you want to hash as an ArrayBuffer
   );
   const passwordHash = new TextDecoder("utf-8").decode(digestedPassword);
-  const payload = queries("signin", {
+  const payload = getPayload("signin", {
     customer: username
   });
 
