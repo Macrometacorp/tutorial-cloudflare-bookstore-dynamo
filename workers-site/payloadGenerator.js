@@ -159,7 +159,7 @@ const getPayload = (actionName, inputValues) => {
         query: `LET userId = first(FOR user in UsersTable FILTER user.customerId == @customerId return user._id)
         FOR user IN ANY userId friend
             FOR books IN OUTBOUND user purchased
-            RETURN books`,
+            RETURN DISTINCT books`,
         bindVars: inputValues,
       };
       break;
