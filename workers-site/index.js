@@ -2,10 +2,10 @@ import {
   getAssetFromKV,
   mapRequestToAsset,
 } from "@cloudflare/kv-asset-handler";
+import Client from "mmdynamo";
 const Router = require("./router");
 const init = require("./init");
 const jsc8 = require("jsc8");
-const { DynamoDB } = require("mmdynamo");
 const { getPayload } = require("./payloadGenerator");
 const { uuid } = require("@cfworker/uuid");
 const { decode } = require("base64-arraybuffer");
@@ -65,7 +65,7 @@ async function handleAssetEvent(event) {
           ...notFoundResponse,
           status: 404,
         });
-      } catch (e) { }
+      } catch (e) {}
     }
 
     return new Response(e.message || e.toString(), { status: 500 });
@@ -107,7 +107,7 @@ const client = new jsc8({
   url: C8_URL,
   apiKey: C8_API_KEY,
   agentOptions: {
-    maxSockets: 50000
+    maxSockets: 50000,
   },
   agent: fetch,
 });
@@ -119,10 +119,16 @@ const endpoint = host + "/_api/dynamo";
 const secretAccessKey = "c8";
 const accessKeyId = "apikey " + C8_API_KEY;
 
-const dynamoClient = new DynamoDB({
-  endpoint,
-  accessKeyId,
-  secretAccessKey,
+// const dynamoClient = new DynamoDB({
+//   endpoint,
+//   accessKeyId,
+//   secretAccessKey,
+// });
+const dynamoClient = new Client({
+  federationURL: C8_URL,
+  agent: "fetch",
+  apiKey: C8_API_KEY,
+  absolutePath: false,
 });
 
 const getLastPathParam = (request) => {
@@ -151,38 +157,41 @@ const convertOutput = (data) => {
       const createSubObj = (key, subItem) => {
         let obj = {};
         for (var type in subItem) {
-          if (type === 'SS') {
+          if (type === "SS") {
             obj[key] = [];
             for (let i = 0; i < subItem[type].length; i++) {
               obj[key].push(subItem[type][i]);
             }
-          } else if (type === 'M') {
-              obj = createObj(subItem[type]);
-          } else if (type === 'L') {
+          } else if (type === "M") {
+            obj = createObj(subItem[type]);
+          } else if (type === "L") {
             obj[key] = [];
             for (var i = 0; i < subItem[type].length; i++) {
               obj[key].push(createSubObj(key, subItem[type][i]));
             }
-          } else if (type === 'S') {
+          } else if (type === "S") {
             obj[key] = subItem[type];
-          } else if (type === 'N') {
+          } else if (type === "N") {
             obj[key] = Number(subItem[type]);
-          } else if (type === 'BOOL') {
-            obj[key] = (subItem[type] === 'true' || subItem[type] === 'TRUE' || subItem[type] === true);
-          } else if (type === 'NULL') {
-            obj[key] = null
+          } else if (type === "BOOL") {
+            obj[key] =
+              subItem[type] === "true" ||
+              subItem[type] === "TRUE" ||
+              subItem[type] === true;
+          } else if (type === "NULL") {
+            obj[key] = null;
           }
         }
         return obj;
-      }
-      output = {...output, ...createSubObj(key, subItem)};
+      };
+      output = { ...output, ...createSubObj(key, subItem) };
     }
     return output;
-  }
+  };
   if (Array.isArray(data)) {
     let outputArray = [];
     for (const item of data) {
-      const output = createObj(item)
+      const output = createObj(item);
       outputArray.push(output);
     }
     return outputArray;
@@ -214,10 +223,10 @@ async function booksHandler(request, c8qlKey) {
 
   const scanPayload = getPayload(c8qlKey, bindValue);
   let body = [];
-  await dynamoClient.scan(scanPayload, (err, res) => {
-    const items = res ? res["Items"] : [];
-    body = convertOutput(items);
-  });
+  const response = await dynamoClient.scan(scanPayload);
+
+  const items = response ? response["Items"] : [];
+  body = convertOutput(items);
 
   return new Response(JSON.stringify(body), optionsObj);
 }
@@ -239,50 +248,54 @@ async function cartHandler(request, c8qlKey) {
       if (c8qlKey === "AddToCart" || c8qlKey === "UpdateCart") {
         if (c8qlKey === "AddToCart") {
           const checkCartPayload = getPayload("FindCartItem", bindValue);
-          await dynamoClient.getItem(checkCartPayload, (err, res) => {
-            if (err) {
-              result = err.errorMessage
-            } else {
-              const item = res ? res["Item"] : [];
-              result = convertOutput(item);
+          try {
+            const response = await dynamoClient.getItem(checkCartPayload);
+
+            const item = response ? response["Item"] : [];
+            result = convertOutput(item);
+
+            if (result.quantity) {
+              bindValue["quantity"] = result.quantity + 1;
             }
-          });
-          if (result.quantity) {
-            bindValue["quantity"] = result.quantity + 1;
+          } catch (error) {
+            const errorMessage = JSON.parse(error.message);
+            result = errorMessage.message;
           }
         }
         const addToCartPayload = getPayload(c8qlKey, bindValue);
-        await dynamoClient.putItem(addToCartPayload, (err, data) => {
-          result = (!data || !data.message) ? [] : data;
-        });
+        const response = await dynamoClient.putItem(addToCartPayload);
+        result = !response || !response.message ? [] : response;
       }
       if (c8qlKey === "RemoveFromCart") {
         const removeFromCartPayload = getPayload(c8qlKey, bindValue);
-        await dynamoClient.deleteItem(removeFromCartPayload, (err, data) => {
-          result = (!data || !data.message) ? [] : data;
-        });
+        const response = await dynamoClient.deleteItem(removeFromCartPayload);
+        result = !response || !response.message ? [] : response;
       }
       return new Response(JSON.stringify(result), optionsObj);
     } else if (c8qlKey === "GetCartItem") {
       bindValue = { ...bindValue, bookId: getLastPathParam(request) };
     } else if (c8qlKey === "ListItemsInCart") {
-      const custCartItemsPayload = getPayload("GetCustomerCartItems", bindValue.customerId);
+      const custCartItemsPayload = getPayload(
+        "GetCustomerCartItems",
+        bindValue.customerId
+      );
       let custCartItems = [];
-      await dynamoClient.scan(custCartItemsPayload, (err, res) => {
-        const items = res ? res["Items"] : [];
-        custCartItems = convertOutput(items);
-      });
+      const response = await dynamoClient.scan(custCartItemsPayload);
+      const items = response ? response["Items"] : [];
+      custCartItems = convertOutput(items);
+
       for (const item of custCartItems) {
         const bookItemPayload = getPayload("GetBookItems", item.bookId);
-        await dynamoClient.getItem(bookItemPayload, (err, res) => {
-          if (err) {
-            result = err.errorMessage
-          } else {
-            const items = res ? res["Item"] : [];
-            const bookItems = convertOutput(items);
-            result.push({ order: item, book: bookItems });
-          }
-        });
+        try {
+          const response = await dynamoClient.getItem(bookItemPayload);
+
+          const items = response ? response["Item"] : [];
+          const bookItems = convertOutput(items);
+          result.push({ order: item, book: bookItems });
+        } catch (error) {
+          const errorMessage = JSON.parse(error.message);
+          result = errorMessage.message;
+        }
       }
       return new Response(JSON.stringify(result), optionsObj);
     }
@@ -310,10 +323,9 @@ async function ordersHandler(request, c8qlKey) {
       }
     } else {
       const listOrderPayload = getPayload(c8qlKey, customerId);
-      await dynamoClient.scan(listOrderPayload, (err, res) => {
-        const items = res ? res["Items"] : [];
-        body = convertOutput(items);
-      });
+      const response = await dynamoClient.scan(listOrderPayload);
+      const items = response ? response["Items"] : [];
+      body = convertOutput(items);
     }
   }
   return new Response(JSON.stringify(body), optionsObj);
@@ -366,9 +378,9 @@ async function signupHandler(request) {
   });
   let result;
 
-  await dynamoClient.putItem(payload, (err, data) => {
-    result = { error: !!data && !!data.message };
-  });
+  const response = await dynamoClient.putItem(payload);
+  result = { error: !!response && !!response.message };
+
   if (!result.error) {
     const res = await executeQuery("AddFriends", { username });
   }
@@ -388,27 +400,27 @@ async function signinHandler(request) {
   );
   const passwordHash = new TextDecoder("utf-8").decode(digestedPassword);
   const payload = getPayload("signin", {
-    customer: username
+    customer: username,
   });
 
   let result = [];
   let message = "User not found";
   let status = 404;
-  await dynamoClient.getItem(payload, (err, res) => {
-    if (err) {
-      message = err.errorMessage
-    } else {
-      const item = res ? res["Item"] : [];
-      result = convertOutput(item);
-      if (result.password && result.password === passwordHash) {
-        message = [result.customerId];
-        status = 200;
-      }
+  try {
+    const response = await dynamoClient.getItem(payload);
+    const item = response ? response["Item"] : [];
+    result = convertOutput(item);
+    if (result.password && result.password === passwordHash) {
+      message = [result.customerId];
+      status = 200;
     }
-  });
-
-  const body = JSON.stringify({ message });
-  return new Response(body, { status, ...optionsObj });
+  } catch (error) {
+    const errorMessage = JSON.parse(error.message);
+    message = errorMessage.message;
+  } finally {
+    const body = JSON.stringify({ message });
+    return new Response(body, { status, ...optionsObj });
+  }
 }
 
 async function whoAmIHandler(request) {

@@ -825,7 +825,8 @@ const Tables = [
             _rev: "_bR90GHu--C",
             author: "Steve Doocy",
             category: "Cookbooks",
-            name: "The Happy in a Hurry Cookbook: 100-Plus Fast and Easy New Recipes That Taste Like Home",
+            name:
+              "The Happy in a Hurry Cookbook: 100-Plus Fast and Easy New Recipes That Taste Like Home",
             price: 17.99,
             rating: 4.6,
           },
@@ -836,7 +837,8 @@ const Tables = [
             _rev: "_bR90GHy--_",
             author: "Kristin Cavallari",
             category: "Cookbooks",
-            name: "True Comfort: More Than 100 Cozy Recipes Free of Gluten and Refined Sugar: A Gluten Free Cookbook",
+            name:
+              "True Comfort: More Than 100 Cozy Recipes Free of Gluten and Refined Sugar: A Gluten Free Cookbook",
             price: 17.52,
             rating: 4.8,
           },
@@ -854,7 +856,7 @@ const Tables = [
     partitionKeyType: "S",
     sortKey: "orderDate",
     sortKeyType: "N",
-    data: []
+    data: [],
   },
   {
     name: "UsersTable",
@@ -1199,8 +1201,8 @@ const formatDataForDynamo = (table) => {
     TableName: table.name,
     KeySchema: keySchema,
     AttributeDefinitions: attributeDefinitions,
-  }
-}
+  };
+};
 
 const formatItem = (name, item) => {
   const formatItemData = (item) => {
@@ -1214,12 +1216,12 @@ const formatItem = (name, item) => {
         type = "N";
       } else if (valueType === "object") {
         if (Array.isArray(item[key])) {
-          itemObject[key] = { "L": [] };
+          itemObject[key] = { L: [] };
           for (const subItem of item[key]) {
-            itemObject[key]["L"].push({ "M": { ...formatItemData(subItem) } });
+            itemObject[key]["L"].push({ M: { ...formatItemData(subItem) } });
           }
         } else {
-          itemObject[key] = { "M": {} };
+          itemObject[key] = { M: {} };
           itemObject[key]["M"] = { ...formatItemData(item[key]) };
         }
       }
@@ -1227,45 +1229,43 @@ const formatItem = (name, item) => {
         itemObject[key] = { [type]: item[key] };
       }
     }
-    return itemObject
-  }
+    return itemObject;
+  };
 
   const formattedItemObject = formatItemData(item);
 
   return {
     TableName: name,
-    Item: formattedItemObject
-  }
-}
+    Item: formattedItemObject,
+  };
+};
 
 const tableHandler = async (c8Client, dynamoClient, table) => {
   const { name, data } = table;
-  await dynamoClient.listTables({}, async (err, { TableNames }) => {
-    if (TableNames.includes(name)) {
-      console.log(`${name} already exists. Skipping creation.`);
-    } else {
-      const coll = c8Client.collection(name);
-      const exists = await coll.exists();
-      if (!exists) {
-        const tableCreationData = formatDataForDynamo(table);
-        await dynamoClient.createTable(tableCreationData, async (error, res) => {
-          if (!error) {
-            for (let item of data) {
-              const formattedItem = formatItem(name, item);
-              await dynamoClient.putItem(formattedItem, () => { });
-            }
-          } else {
+  const { TableNames } = await dynamoClient.listTables({});
+  if (TableNames.includes(name)) {
+    console.log(`${name} already exists. Skipping creation.`);
+  } else {
+    const coll = c8Client.collection(name);
+    const exists = await coll.exists();
+    if (!exists) {
+      const tableCreationData = formatDataForDynamo(table);
+      try {
+        const response = await dynamoClient.createTable(tableCreationData);
 
-            console.log(`Error while creating ${name} table`);
-          }
-        });
-      } else {
-        console.log("Collection already exists. Please delete the collection or change the table name.");
+        for (let item of data) {
+          const formattedItem = formatItem(name, item);
+          await dynamoClient.putItem(formattedItem);
+        }
+      } catch (error) {
+        console.log(`Error while creating ${name} table`);
       }
+    } else {
+      console.log(
+        "Collection already exists. Please delete the collection or change the table name."
+      );
     }
-
-  });
-
+  }
 };
 
 const collectionHandler = async (c8Client, collection) => {
