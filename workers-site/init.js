@@ -1136,7 +1136,6 @@ const STREAM_APP_NAME = "UpdateBestseller";
 
 const UPDATE_BESTSELLER_APP_DEFINITION = `@App:name("${STREAM_APP_NAME}")
 @App:description("Updates BestsellerTable when a new order comes in the OrdersTable")
-
 define function getBookQuantity[javascript] return int {
     const prevQuantity = arguments[0];
     const nextQuantity = arguments[1];
@@ -1155,18 +1154,18 @@ define stream OrdersTable (_json string);
 define stream BestsellerIntermediateStream (bookId string, quantity int);
 
 @store(type = 'c8db', collection='BestsellersTable')
-define table BestsellersTable (_key string, quantity int);
+define table BestsellersTable (_key string, bookId string, quantity int);
 
 select json:getString(jsonElement, '$.bookId') as bookId, json:getInt(jsonElement, '$.quantity') as quantity
 from OrdersTable#json:tokenizeAsObject(_json, "$.books[*]")
 insert into BestsellerIntermediateStream;
 
-select next.bookId as _key, getBookQuantity(prev.quantity, next.quantity) as quantity
+select next.bookId as _key, next.bookId as bookId, getBookQuantity(prev.quantity, next.quantity) as quantity
 from BestsellerIntermediateStream as next
 left outer join BestsellersTable as prev
 on next.bookId == prev._key
 update or insert into BestsellersTable
-set BestsellersTable.quantity = quantity, BestsellersTable._key = _key
+set BestsellersTable.quantity = quantity, BestsellersTable._key = _key, BestsellersTable.bookId = bookId
 on BestsellersTable._key == _key;
 `;
 
