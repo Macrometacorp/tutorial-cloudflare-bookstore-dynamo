@@ -1,3 +1,5 @@
+import { apiRtt } from "./apiRtt";
+
 const CUSTOMER_ID = "customerId";
 
 const getCustomerId = () => sessionStorage.getItem(CUSTOMER_ID);
@@ -10,9 +12,11 @@ const getOptions = (opts: any) => ({
   headers: { "X-Customer-Id": getCustomerId() },
 });
 
-const fetchWrapper = async (url: string, options: object) => {
+const fetchWrapper = async (url: string, options: any) => {
   const apiUrl = `./api${url}`;
+
   const res = await fetch(apiUrl, options);
+  await apiRtt(options.method);
   if (res.ok) {
     return res.json();
   } else {
@@ -38,6 +42,7 @@ const Auth = {
         })
       );
       const customerId = data.message[0];
+      console.log("adadad", data);
       setCustomerId(customerId);
     } catch (e) {
       console.error(e);

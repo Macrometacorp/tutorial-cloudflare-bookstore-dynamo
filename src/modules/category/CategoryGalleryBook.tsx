@@ -8,13 +8,11 @@ interface CategoryGalleryBookProps {
   book: Book;
 }
 
-export class CategoryGalleryBook extends React.Component<
-  CategoryGalleryBookProps
-> {
+export class CategoryGalleryBook extends React.Component<CategoryGalleryBookProps> {
   render() {
     if (!this.props.book) return;
     return (
-      <div className="col-sm-3 col-md-3 tile">
+      <div className="col-sm-3 col-md-3">
         <div className="thumbnail no-border">
           <p className="rating-container">
             <StarRating stars={this.props.book.rating} />
@@ -26,7 +24,7 @@ export class CategoryGalleryBook extends React.Component<
             alt={`${this.props.book.name} cover`}
           />
           <div className="caption">
-            <h4 className="text-center">{this.props.book.name}</h4>
+            <h4 className="text-center wrap-text">{this.props.book.name}</h4>
             <AddToCart
               bookId={this.props.book["bookId"]}
               price={this.props.book.price}
