@@ -21,6 +21,7 @@ interface AppState {
 }
 
 class App extends Component<AppProps, AppState> {
+  private performanceButton: React.RefObject<HTMLInputElement>;
   constructor(props: AppProps) {
     super(props);
 
@@ -30,6 +31,7 @@ class App extends Component<AppProps, AppState> {
       showNetworkLatency: false,
       showLatestNetworkLatencyValue: "50 ms",
     };
+    this.performanceButton = React.createRef();
 
     document.title = "Edge Commerce Demo";
   }
@@ -38,6 +40,7 @@ class App extends Component<AppProps, AppState> {
     if (!sessionStorage.getItem("responseTime")) {
       sessionStorage.setItem("responseTime", JSON.stringify([]));
     }
+    document.addEventListener("click", this.handleOutsideClick);
     try {
       if (await Auth.currentSession()) {
         this.userHasAuthenticated(true);
@@ -51,6 +54,19 @@ class App extends Component<AppProps, AppState> {
     this.setState({ isAuthenticating: false });
   }
 
+  handleOutsideClick = (event: any) => {
+    if (
+      !event.target.id.includes("category-nav-bar") &&
+      this.performanceButton &&
+      this.performanceButton.current &&
+      !this.performanceButton.current.contains(event.target)
+    ) {
+      this.setState({ showNetworkLatency: false });
+    }
+  };
+  componentWillUnmount() {
+    window.removeEventListener("click", this.handleOutsideClick);
+  }
   userHasAuthenticated = (authenticated: boolean) => {
     const networkLatency = JSON.parse(
       sessionStorage.getItem("responseTime") || "[]"
@@ -189,10 +205,26 @@ class App extends Component<AppProps, AppState> {
             </Navbar.Header>
             {this.state.isAuthenticated ? (
               <>
-                <Navbar.Text style={{ paddingTop: "2px" }}>
-                  <span
+                <Navbar.Text style={{ marginTop: "10px" }}>
+                  <button
+                    className="btn btn-orange no-radius"
+                    onClick={this.renderNetworkLatency}
+                    style={{ marginRight: "5px" }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "16px",
+                        color: "#ffffff",
+                        fontWeight: "bold",
+                      }}
+                      ref={this.performanceButton}
+                    >
+                      View Network Performance
+                    </div>
+                  </button>
+                  {/* <span
                     className="navbar-items-font-style"
-                    style={{ marginLeft: "5vw", fontSize: "24px" }}
+                    style={{ marginLeft: "3vw", fontSize: "24px" }}
                   >
                     Latency :
                   </span>
@@ -202,9 +234,9 @@ class App extends Component<AppProps, AppState> {
                     style={{ fontSize: "24px" }}
                   >
                     {this.state.showLatestNetworkLatencyValue}
-                  </span>
+                  </span> */}
                 </Navbar.Text>
-                <Navbar.Form pullLeft>
+                {/* <Navbar.Form pullLeft>
                   <div className="checkbox-styling">
                     <input
                       type="checkbox"
@@ -220,7 +252,7 @@ class App extends Component<AppProps, AppState> {
                       More Details
                     </label>
                   </div>
-                </Navbar.Form>
+                </Navbar.Form> */}
               </>
             ) : null}
             <Navbar.Collapse>

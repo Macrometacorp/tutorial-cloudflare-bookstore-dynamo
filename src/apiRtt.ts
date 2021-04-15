@@ -37,5 +37,10 @@ export const apiRtt = (method: string) => {
     }
   }
   let responseTimeArray = [...performanceRttArray, ...newArray];
+  if (responseTimeArray.length > 100) {
+
+    const difference = Math.abs(responseTimeArray.length - 100);
+    responseTimeArray.splice(0, difference);
+  }
   sessionStorage.setItem("responseTime", JSON.stringify(responseTimeArray));
 };

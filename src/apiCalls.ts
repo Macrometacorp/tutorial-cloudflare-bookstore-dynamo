@@ -42,7 +42,6 @@ const Auth = {
         })
       );
       const customerId = data.message[0];
-      console.log("adadad", data);
       setCustomerId(customerId);
     } catch (e) {
       console.error(e);

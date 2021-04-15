@@ -5,10 +5,13 @@ import "./categories.css";
 export class CategoryNavBar extends React.Component {
   render() {
     return (
-      <ul className="nav nav-pills justify-content-space-between nav-cat">
+      <ul
+        className="nav nav-pills justify-content-space-between nav-cat"
+      >
         {Object.values(categories).map((category) => (
           <li role="presentation" key={category}>
             <a
+              id={`category-nav-bar-${category}`}
               className="category-link"
               href={`/category/${category}`}
               style={{ fontSize: "18px", lineHeight: "28px" }}
