@@ -37,6 +37,7 @@ class App extends Component<AppProps, AppState> {
   }
 
   async componentDidMount() {
+
     if (!sessionStorage.getItem("responseTime")) {
       sessionStorage.setItem("responseTime", JSON.stringify([]));
     }
@@ -55,8 +56,14 @@ class App extends Component<AppProps, AppState> {
   }
 
   handleOutsideClick = (event: any) => {
+    const closestParent = event.target.closest("#paper-id");
+
+    const dropdownClosest = event.target.closest("#menu-");
     if (
       !event.target.id.includes("category-nav-bar") &&
+      !closestParent &&
+      event.target.tagName.toLowerCase() !== "body" &&
+      !dropdownClosest &&
       this.performanceButton &&
       this.performanceButton.current &&
       !this.performanceButton.current.contains(event.target)
@@ -150,16 +157,6 @@ class App extends Component<AppProps, AppState> {
 
   showLoggedOutBar = () => (
     <Fragment>
-      <LinkContainer to="/signup">
-        <NavItem>
-          <span
-            className="orange  navbar-items-font-style"
-            style={{ fontWeight: "initial" }}
-          >
-            Sign up
-          </span>
-        </NavItem>
-      </LinkContainer>
       <LinkContainer to="/login">
         <NavItem>
           <span
@@ -182,7 +179,7 @@ class App extends Component<AppProps, AppState> {
 
     return (
       !this.state.isAuthenticating && (
-        <div className="app-restyling">
+        <div className="App container">
           <Navbar
             fluid
             collapseOnSelect
@@ -219,7 +216,7 @@ class App extends Component<AppProps, AppState> {
                       }}
                       ref={this.performanceButton}
                     >
-                      View Network Performance
+                      View Latency Stats
                     </div>
                   </button>
                   {/* <span

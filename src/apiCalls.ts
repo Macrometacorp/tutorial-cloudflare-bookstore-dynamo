@@ -16,7 +16,6 @@ const fetchWrapper = async (url: string, options: any) => {
   const apiUrl = `./api${url}`;
 
   const res = await fetch(apiUrl, options);
-  await apiRtt(options.method);
   if (res.ok) {
     return res.json();
   } else {
@@ -64,25 +63,33 @@ const Auth = {
 
 const API = {
   get: async function (key: string, path: string, extra: any) {
-    return await fetchWrapper(path, getOptions({ method: "GET" }));
+    const response = await fetchWrapper(path, getOptions({ method: "GET" }));
+    apiRtt("GET");
+    return response;
   },
   post: async function (key: string, path: string, data: any) {
-    return await await fetchWrapper(
+    const response = await fetchWrapper(
       path,
       getOptions({ method: "POST", body: JSON.stringify(data.body) })
     );
+    apiRtt("POST");
+    return response;
   },
   put: async function (key: string, path: string, data: any) {
-    return await fetchWrapper(
+    const response = await fetchWrapper(
       path,
       getOptions({ method: "PUT", body: JSON.stringify(data.body) })
     );
+    apiRtt("PUT");
+    return response;
   },
   del: async function (key: string, path: string, data: any) {
-    return await fetchWrapper(
+    const response = await fetchWrapper(
       path,
       getOptions({ method: "DELETE", body: JSON.stringify(data.body) })
     );
+    apiRtt("DELETE");
+    return response;
   },
 };
 
