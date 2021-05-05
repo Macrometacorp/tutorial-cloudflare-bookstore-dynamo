@@ -90,20 +90,27 @@ This is implemented using `streams` and `stream processing` functionality in Mac
 
 **Indexes:**
 
-Create persistent indexes on the collection for the corresponding attributes
+Create indexes on the collection for the corresponding attributes
 
-TBD
+| **Collection**   | **Partition Key** | **Sorting Key** |
+| ---------------- | ----------------- | --------------- |
+| BestsellersTable | `bookId`          | -               |
+| CartTable        | `cartId`          | -               |
+| BooksTable       | `bookId`          | -               |
+| friend           | N/A               | N/A             |
+| OrdersTable      | `orderId`         | `orderDate`     |
+| UsersTable       | `customer`        | -               |
 
 ## API Details
 
 Below are the list of APIs being used.
 
-**Books (Macrometa Docuemnt Store DB)**
+**Books (Macrometa Dynamo Store DB)**
 
 - GET /books (ListBooks)
 - GET /books/{:id} (GetBook)
 
-**Cart (Macrometa Docuemnt Store DB)**
+**Cart (Macrometa Dynamo Store DB)**
 
 - GET /cart (ListItemsInCart)
 - POST /cart (AddToCart)
@@ -111,12 +118,12 @@ Below are the list of APIs being used.
 - DELETE /cart (RemoveFromCart)
 - GET /cart/{:bookId} (GetCartItem)
 
-**Orders (Macrometa Docuemnt Store DB)**
+**Orders (Macrometa Dynamo Store DB)**
 
 - GET /orders (ListOrders)
 - POST /orders (Checkout)
 
-**Best Sellers (Macrometa Docuemnt Store DB)**
+**Best Sellers (Macrometa Dynamo Store DB)**
 
 - GET /bestsellers (GetBestSellers)
 
@@ -132,8 +139,73 @@ Below are the list of APIs being used.
 ## Queries
 
 Dynamo tables and C8QLs are used by the Cloudflare workers to communicate with Macrometa GDN.
-TBD
 
+**GetCartItem**:
+
+```js
+    FOR item IN CartTable FILTER item.customerId == @customerId AND item.bookId == @bookId RETURN item
+```
+**AddFriends**:
+
+```js
+ LET otherUsers = (FOR users in UsersTable FILTER users._key != @username RETURN users)
+        FOR user in otherUsers
+            INSERT { _from: CONCAT("UsersTable/",@username), _to: CONCAT("UsersTable/",user._key)  } INTO friend
+```
+
+**Checkout**:
+
+```js
+LET items = (FOR item IN CartTable FILTER item.customerId == @customerId RETURN item)
+        LET books = (FOR item in items
+            FOR book in BooksTable FILTER book._key == item.bookId return {bookId:book._key ,author: book.author,category:book.category,name:book.name,price:book.price,rating:book.rating,quantity:item.quantity})
+        INSERT {_key: @orderId, orderId: @orderId, customerId: @customerId, books: books, orderDate: @orderDate} INTO OrdersTable
+        FOR item IN items REMOVE item IN CartTable
+```
+
+**AddPurchased**:
+
+```js
+LET order = first(FOR order in OrdersTable FILTER order._key == @orderId RETURN {customerId: order.customerId, books: order.books})
+        LET customerId = order.customerId
+        LET userId = first(FOR user IN UsersTable FILTER user.customerId == customerId RETURN user._id)
+        LET books = order.books
+        FOR book IN books
+            INSERT {_from: userId, _to: CONCAT("BooksTable/",book.bookId)} INTO purchased
+```
+**GetBestSellers**:
+
+```js
+   FOR bestseller in BestsellersTable
+        FOR book in BooksTable
+            FILTER bestseller._key == book._key SORT bestseller.quantity DESC LIMIT 20 RETURN book
+```
+**GetRecommendations**:
+
+```js
+   LET userId = first(FOR user in UsersTable FILTER user.customerId == @customerId return user._id)
+        FOR user IN ANY userId friend
+            FOR books IN OUTBOUND user purchased
+            RETURN DISTINCT books
+```
+**GetRecommendationsByBook**:
+
+```js
+   LET userId = first(FOR user in UsersTable FILTER user.customerId == @customerId return user._id)
+      LET bookId = CONCAT("BooksTable/",@bookId)
+      FOR friendsPurchased IN INBOUND bookId purchased
+          FOR user IN ANY userId friend
+              FILTER user._key == friendsPurchased._key
+                  RETURN user
+```
+**Search**
+
+```js
+   FOR doc IN findBooks
+      SEARCH PHRASE(doc.name, @search, "text_en") OR PHRASE(doc.author, @search, "text_en") OR PHRASE(doc.category, @search, "text_en")
+      SORT BM25(doc) desc
+      RETURN doc
+```
 ## Macrometa Views
 
 Search functionality is powered by Macrometa Views. This is saved as `findFashionItems` with below config:
