@@ -2,34 +2,37 @@ import React from "react";
 import { ProductRow } from "./ProductRow";
 import { API } from "../../apiCalls";
 
-interface FriendsBoughtProps {
-
-}
+interface FriendsBoughtProps {}
 
 interface FriendsBoughtState {
   isLoading: boolean;
   recommendations: any[]; // FIXME
 }
 
-export class FriendsBought extends React.Component<FriendsBoughtProps, FriendsBoughtState> {
+export class FriendsBought extends React.Component<
+  FriendsBoughtProps,
+  FriendsBoughtState
+> {
   constructor(props: FriendsBoughtProps) {
     super(props);
 
     this.state = {
       isLoading: true,
-      recommendations: []
+      recommendations: [],
     };
   }
 
   componentDidMount() {
     API.get("recommendations", "/recommendations", null)
-      .then(response => {
+      .then((response) => {
         this.setState({
           recommendations: response,
-          isLoading: false
+          isLoading: false,
         });
       })
-      .catch(error => console.error(error));
+      .catch((error) => {
+        console.error(error);
+      });
   }
 
   render() {
@@ -40,9 +43,13 @@ export class FriendsBought extends React.Component<FriendsBoughtProps, FriendsBo
         <div className="container-category">
           <h3>Books your friends have bought</h3>
         </div>
-        {this.state.recommendations.slice(0,5).map(recommendation =>
-          <ProductRow book={recommendation} bookId={recommendation.bookId} key={recommendation._key} />
-        )}
+        {this.state.recommendations.slice(0, 5).map((recommendation) => (
+          <ProductRow
+            book={recommendation}
+            bookId={recommendation.bookId}
+            key={recommendation._key}
+          />
+        ))}
       </div>
     );
   }

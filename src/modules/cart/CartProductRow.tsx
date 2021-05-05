@@ -62,12 +62,10 @@ export class CartProductRow extends React.Component<
   };
 
   onQuantityUpdated = async (event: any) => {
-    const price = !!this.state.book ? this.state.book.price : 0.00;
     await API.put("cart", "/cart", {
       body: {
         bookId: this.props.order.bookId,
         quantity: parseInt(event.target.value, 10),
-        price
       },
     });
   };
@@ -102,7 +100,7 @@ export class CartProductRow extends React.Component<
                 <div className="input-group">
                   <input
                     type="number"
-                    className="form-control"
+                    className="form-control product-quantity-input-style"
                     placeholder="Quantity"
                     defaultValue={this.props.order.quantity.toString()}
                     onChange={this.onQuantityUpdated}

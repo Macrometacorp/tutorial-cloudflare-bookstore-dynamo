@@ -67,7 +67,6 @@ export default class PastPurchases extends Component<
   render() {
     return (
       <div className="Category">
-        <SearchBar />
         <CategoryNavBar />
         <div className="well-bs col-md-12">
           {this.state.userInfo && (
@@ -88,7 +87,7 @@ export default class PastPurchases extends Component<
                     order.orderDate
                   )}`}</h4>
                   {order.books.map((book) => (
-                    <PurchasedProductRow order={book} key={book["bookId"]} />
+                    <PurchasedProductRow order={book} key={book.bookId} />
                   ))}
                 </div>
               ))}

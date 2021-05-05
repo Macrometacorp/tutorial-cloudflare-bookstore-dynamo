@@ -4,6 +4,8 @@
   "private": true,
   "dependencies": {
     "@cloudflare/wrangler": "^1.12.2",
+    "@material-ui/core": "^4.11.3",
+    "@material-ui/icons": "^4.11.2",
     "@types/graphql": "^14.0.5",
     "@types/jest": "^23.3.10",
     "@types/node": "^10.12.12",
@@ -27,7 +29,6 @@
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject"
   },
-  "devDependencies": {},
   "browserslist": [
     ">0.2%",
     "not dead",
