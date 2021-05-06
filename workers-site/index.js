@@ -352,7 +352,7 @@ async function recommendationsHandler(request, c8qlKey) {
 
 async function searchHandler(request, c8qlKey) {
   const queryParam = getLastPathParam(request);
-  const search = queryParam.split("?")[1].split("=")[1];
+  const search = decodeURIComponent(queryParam.split("?")[1].split("=")[1]);
   const body = await executeQuery(c8qlKey, { search });
   return new Response(JSON.stringify(body), optionsObj);
 }
