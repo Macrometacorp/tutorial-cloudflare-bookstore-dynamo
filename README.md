@@ -24,7 +24,7 @@ As a user of the demo, you can browse and search for books, look at recommendati
 
 | **Federation**                                        | **Email**                     | **Passsword** |
 | ----------------------------------------------------- | ----------------------------- | ------------- |
-| [Global Data Network](https://gdn.paas.macrometa.io/) | bookstore-dynamo@macrometa.io | `xxxxxxxx`    |
+| [Global Data Network](https://play.macrometa.io/) | demo-bookstore-dynamo@macrometa.io | `xxxxxxxx`    |
 
 ## Architecture
 
