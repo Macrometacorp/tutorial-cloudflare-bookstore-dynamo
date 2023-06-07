@@ -105,6 +105,7 @@ const optionsObj = {
 
 const client = new jsc8({
   url: C8_URL,
+  fabricName: C8_FABRIC,
   apiKey: C8_API_KEY,
   agentOptions: {
     maxSockets: 50000,
@@ -125,7 +126,7 @@ const accessKeyId = "apikey " + C8_API_KEY;
 //   secretAccessKey,
 // });
 const dynamoClient = new Client({
-  federationURL: C8_URL,
+  federationURL: `${C8_URL}/_fabric/${C8_FABRIC}`,
   agent: "fetch",
   apiKey: C8_API_KEY,
   absolutePath: false,
